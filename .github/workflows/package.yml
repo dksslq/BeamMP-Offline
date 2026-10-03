@@ -25,7 +25,12 @@ jobs:
         run: |
           set -euo pipefail
           STAGING="$(mktemp -d)"
-          cp -r lua ui locales settings vehicles "$STAGING"/
+          # IMPORTANT: 'scripts' contains BeamMP/modScript.lua - the Lua bootstrap
+          # that load()s every MP extension (MPCoreNetwork, MPGameNetwork, ...).
+          # Without it the game loads the UI but ALL lua globals stay nil
+          # ("attempt to index global 'MPCoreNetwork' (a nil value)").
+          # 'icons' contains the chat/playerlist UI icons.
+          cp -r lua ui locales settings vehicles icons scripts "$STAGING"/
           # OFFLINE marker: this file exists ONLY in offline-edition builds.
           # It lets the launcher / lua / UI (and humans) verify that the
           # installed mod is the offline edition, not an upstream copy.
@@ -51,6 +56,26 @@ jobs:
           sha256sum BeamMP.zip > BeamMP.zip.sha256
           echo "### BeamMP.zip contents:" > contents.txt
           unzip -l BeamMP.zip >> contents.txt
+
+      - name: Verify critical files are in the zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+            scripts/BeamMP/modScript.lua \
+            lua/ge/extensions/MPCoreNetwork.lua \
+            lua/ge/extensions/MPGameNetwork.lua \
+            lua/ge/extensions/beammp/multiplayer.lua \
+            lua/ge/extensions/beammp/OFFLINE_BUILD.lua \
+            icons/send.png \
+            ui/ui-vue/mods/BeamMP/index.js ;
+          do
+            if ! unzip -l BeamMP.zip | grep -q " $f$"; then
+              echo "FATAL: $f is missing from BeamMP.zip!"
+              exit 1
+            fi
+          done
+          echo "All critical files present in BeamMP.zip."
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

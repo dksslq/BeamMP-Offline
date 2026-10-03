@@ -103,8 +103,19 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
    `mods/multiplayer/` 下。
 3. Launcher 的 `PreGame()` 会自动安装它（见 3.3）。
 
-**mod zip 的目录结构** = 仓库里的 `lua/ ui/ locales/ settings/ vehicles/` 目录直接打进 zip 根。
+**mod zip 的目录结构** = 仓库里的 `lua/ ui/ locales/ settings/ vehicles/ icons/ scripts/`
+目录直接打进 zip 根（+ LICENSE）。
 UI（Vue）是**源码直接分发**的（BeamNG 运行时加载 `ui/ui-vue/mods/BeamMP/index.js`），无需 npm 构建。
+
+**⚠ 发布检查清单（CI 已自动化校验，改 package.yml 时勿删）**：
+zip 内必须存在 `scripts/BeamMP/modScript.lua` —— 它是 BeamNG 的 Lua 引导入口，
+负责 `load()` 全部 MP 扩展（MPCoreNetwork/MPGameNetwork/MPVehicleGE/...）。
+**丢失它 = UI 能显示但所有 MPCoreNetwork 等全局为 nil**
+（症状：点击 BeamMP 按钮报 `attempt to index global 'MPCoreNetwork' (a nil value)`）。
+v1.0.0-offline-mod 曾因漏打包 `scripts/` 和 `icons/` 触发此 bug，v1.0.1 修复。
+
+历史备注：官方 zip 还含 `vehicles/unicycle/` 的 beamlings 宠物彩蛋（来自官方私有
+Beamlings.zip，无开源许可信息），离线版不包含，不影响联机功能。
 
 ### 3.5 版本配套
 
@@ -241,8 +252,25 @@ BeamMP-Offline 主仓库的 Release 里（或分别放在各自 Release）。
 - 可做：Launcher `--player <name>` 命令行参数直接指定昵称。
 - 服务器密码功能（上游有 Password 相关注释代码）可以启用，增强私服管控。
 - 中文等其他语言的 UI 文案（locales/translations）可补充离线欢迎页翻译。
+- modScript.lua 有游戏版本门禁（`compatibleVersion = 39`，即 BeamNG 0.39.x）。
+  上游升级支持新版 BeamNG 时需同步此数字；版本不匹配时 mod 会自动停用并弹提示（属预期行为）。
 
-## 9. 许可
+## 9. 已修复的发布事故（供未来排查参考）
+
+### 9.1 v1.0.0-offline-mod：zip 缺 scripts/ 导致 MPCoreNetwork 为 nil
+- **症状**：进游戏点击 BeamMP 按钮报
+  `attempt to index global 'MPCoreNetwork' (a nil value)`
+  （位置：`guihooks.trigger("onBNGAPICallback", <id>, MPCoreNetwork.isLauncherConnected())`）。
+- **根因**：package.yml 打包命令 `cp -r lua ui locales settings vehicles` 漏了
+  `scripts/`（内含 BeamNG Lua 引导 modScript.lua）和 `icons/`（聊天/玩家列表图标）。
+  没有 modScript.lua，BeamNG 不会 load() 任何 MP 扩展 → 全局为 nil。
+  UI（Vue 源码）由游戏 UI 系统独立加载所以按钮仍可见 —— 症状与根因错位，具迷惑性。
+- **修复**（v1.0.1-offline-mod）：打包加入 `icons scripts`；CI 增加
+  "Verify critical files" 步骤校验 modScript.lua 等关键文件在 zip 内，缺失即 fail。
+- **教训**：改打包脚本后，必须 `unzip -l` 人工核对与官方 zip 的文件清单差异
+  （官方 zip = development 分支 + 私有 Beamlings.zip 覆盖物）。
+
+## 10. 许可
 
 所有代码遵循上游的 AGPL-3.0-or-later。离线化改动同样以 AGPL-3.0 发布。
 本项目与 BeamMP 官方无隶属关系；请勿用于商业用途（遵循上游许可约束）。
