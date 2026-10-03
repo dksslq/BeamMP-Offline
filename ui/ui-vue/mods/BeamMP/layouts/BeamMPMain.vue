@@ -68,6 +68,7 @@
         <div class="beammp-version">
           <span aria-hidden="true" />
           {{ $tt("ui.common.beammp.beammp") }} v{{ state.beammpMetrics.value.beammpGameVer }}
+          <span class="offline-badge" title="Offline edition - no account, no internet required">OFFLINE</span>
         </div>
 
         <button class="nav-btn" :class="{ active: isServerView('servers') }" @click="gotoView('servers')">{{ $tt("ui.common.beammp.servers") }}</button>
@@ -590,6 +591,19 @@ onBeforeUnmount(() => {
   width: 8.5rem;
   display: block;
   margin: 1rem auto;
+}
+
+.offline-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--bng-orange-500);
+  color: var(--bng-orange-300);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
 }
 
 .beammp-version {

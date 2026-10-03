@@ -19,7 +19,9 @@ const { state } = useBeamMPState()
 const MOD_ROOT = "/ui/ui-vue/mods/BeamMP"
 
 // title for the button and tabs
-const TITLE = "BeamMP"
+// OFFLINE MODE: label the main-menu entry so users always know which
+// edition they are running; upstream shows just "BeamMP".
+const TITLE = "BeamMP Offline"
 const TITLE_translationId = 'ui.common.beammp.title'
 
 // 1 and 2. Register a Main Menu button. `addButton` is a function.

@@ -66,7 +66,7 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 #### BeamMP-Server-Offline
 | 文件 | 改动 |
 |---|---|
-| `src/TNetwork.cpp` `TNetwork::Authentication()` | 删除 POST `/pkToUser` 的整段逻辑；身份包直接当作玩家名（sanitize：去控制字符、≤32 字节）；`SetName/ SetRoles("USER") / SetIsGuest()`。onPlayerAuth/postPlayerAuth Lua 事件保留。 |
+| `src/TNetwork.cpp` `TNetwork::Authentication()` | 删除 POST `/pkToUser` 的整段逻辑；身份包直接当作玩家名（sanitize：去控制字符、≤32 字节）；`SetName/ SetRoles("USER") / SetIsGuest()`。onPlayerAuth/postPlayerAuth Lua 事件保留。**上游客户端兼容**：若包内容是 ≥40 位纯 hex（官方 Launcher 发的是公钥），识别并命名 `Player-<前6位hex小写>`，官方玩家也能进离线服。 |
 | `src/THeartbeatThread.cpp` `operator()` | 整个 HTTP 心跳循环替换为本地循环：每 5 秒调用 `GenerateCall()` 刷新 `lastCall`（供 `I` 信息包），状态置 Good，无任何网络请求。 |
 | `src/Common.cpp` `Application::CheckForUpdates()` | 替换为空操作（状态置 Good）。 |
 | `src/TConsole.cpp` `Command_NetTest()` | 不再请求 Server Check API，改为打印本地监听地址/玩家数。 |
@@ -77,7 +77,7 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 |---|---|
 | `src/Security/Login.cpp` | **整文件重写**：`Login()` 不联网，解析 `{"username":"X"}` 存到 `player_name` 文件并返回 success；`CheckLocalKey()` 只读本地文件恢复昵称，恒 `LoginAuth=true`；新增 `SanitizePlayerName()`。 |
 | `src/Startup.cpp` `CheckForUpdates()` | 空操作。 |
-| `src/Startup.cpp` `PreGame()` | 不再从 backend 下载 mod。改为：游戏目录已有 `mods/multiplayer/BeamMP.zip` → 直接用；否则 Launcher 目录有 `BeamMP.zip` → 复制过去；都没有 → fatal 并提示从 Release 下载放置。 |
+| `src/Startup.cpp` `PreGame()` | 不再从 backend 下载 mod。**优先级**：Launcher 同目录 `BeamMP.zip` 为权威离线副本（与游戏目录版本不同则覆盖安装）→ 游戏目录已有则直接用 → 都没有则 fatal 并提示从 Release 下载放置。官方版 mod 无法被静默装回（本 Launcher 永不联网）。 |
 | `src/Network/Core.cpp` `Parse()` case 'B' | 服务器列表请求返回空数组 `B[]`（引导用户使用 Direct Connect）。 |
 | `src/Network/Resources.cpp` `Auth()` | `TCPSend(PublicKey)` → `TCPSend(Username)`（≤32 字节）。 |
 | `src/Network/Http.cpp` `StartProxy()` | 整个代理线程替换为空操作（`ProxyPort=0`）。 |
@@ -91,7 +91,9 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 | `ui/ui-vue/mods/BeamMP/views/BeamMPLoginView.vue` | **重写**：原账号登录页 → 玩家昵称设置页（Save Name / Play as Guest / Back）。 |
 | `ui/ui-vue/mods/BeamMP/shared/beammpState.js` `login()` | 密码不再必需；只发 `{username}`。 |
 | `ui/ui-vue/mods/BeamMP/layouts/BeamMPMain.vue` | 侧栏移除 Forum/Discord/Patreon/Docs 按钮；隐藏 Official/Featured/Partner 分类过滤；GitHub 按钮指向官方仓库。 |
-| `.github/workflows/package.yml` | **新增**：把 `lua/ ui/ locales/ settings/ vehicles/ + LICENSE` 打包成 `BeamMP.zip`，push 到 main 产出 artifact，打 tag（`v*`）时附加到 Release。 |
+| `.github/workflows/package.yml` | **新增**：把 `lua/ ui/ locales/ settings/ vehicles/ + LICENSE` 打包成 `BeamMP.zip`，push 到 main 产出 artifact，打 tag（`v*`）时附加到 Release。打包时**自动注入 `lua/ge/extensions/beammp/OFFLINE_BUILD.lua` 标记**（含 edition/version/commit/repository），用于识别离线版 mod（官方版 zip 没有此文件）。 |
+| `ui/ui-vue/mods/BeamMP/index.js` | 主菜单按钮标题 `BeamMP` → `BeamMP Offline`。 |
+| `ui/ui-vue/mods/BeamMP/layouts/BeamMPMain.vue` | 版本行加 `OFFLINE` 徽标（带 title 提示）。 |
 
 ### 3.4 客户端 mod 分发方式（重要！）
 
@@ -108,6 +110,51 @@ UI（Vue）是**源码直接分发**的（BeamNG 运行时加载 `ui/ui-vue/mods
 
 三个组件必须配套使用（协议是自定义的）。对外版本号沿用上游 Launcher `2.8.1` 风格；
 服务端 `ClientMinimumVersion` 校验依然有效（版本包协议未变）。
+
+### 3.6 上游（官方）客户端兼容性 —— 语义说明
+
+**问题**：官方（需登录账号的）Launcher/mod 能连我们的离线服务器吗？
+
+**结论：能直接玩（天然支持），服务器无需额外改造即可接受官方客户端。** 原因与行为：
+1. 握手协议（`VC<ver>` → `A` → 身份包 → `P<id>` → `SR`）与上游完全一致，未变。
+2. 官方 Launcher 在"身份包"位置发送的是**账号公钥**（长 hex 字符串）；
+   我们的 Server 识别该特征（≥40 位纯 hex），自动命名为 `Player-<前6位hex>`
+   —— 官方玩家可读名字、正常进服、正常游戏。
+3. 官方客户端在**有互联网**时才能完成它自己的登录/UI 流程（它连官方 auth）；
+   连接目标则可以是我们任一离线服务器（游戏内 Direct Connect 输 IP）。
+4. 官方客户端**无互联网**时无法通过官方登录流程（官方设计），此时只能换用
+   本项目的离线 Launcher —— 这正是本项目存在的意义。
+5. 语义对照表：
+
+| 身份包内容 | 来源 | 服务器行为 |
+|---|---|---|
+| 普通昵称（≤32B） | BeamMP-Offline-Launcher | 直接作为玩家名 |
+| 空 | 离线 Launcher（Guest 模式） | 命名 `Guest`（受 AllowGuests 约束） |
+| ≥40 位纯 hex | 官方 Launcher（公钥） | 命名 `Player-<hex前6位>`，可正常游戏 |
+
+### 3.7 mod 防覆盖 / 防被"更新"回官方版 —— 设计说明
+
+**问题**：会不会有入口把玩家装好的离线 mod（BeamMP.zip）自动"更新"成官方版？
+
+**结论：本项目组件链路中不存在任何在线更新路径；也无需修改 mod id。**
+1. 我们的 Launcher **永不联网**、永不从 backend 下载/覆盖 mod（§3.3 Launcher 表）。
+2. BeamNG 的 mod 管理器只对 BeamNG 官方 repo 的 mod 提供"更新"按钮；
+   BeamMP.zip 不在 repo 上，游戏内没有更新入口。
+3. BeamMP 本体从不经服务器下发（服务器只下发地图/车模资源）。
+4. **不需要改 mod id/文件名**：`mods/multiplayer/BeamMP.zip` 的加载与
+   `multiplayerbeammp` 激活 key 是 BeamNG 对该路径的特殊处理，改名有兼容风险
+   且防不住唯一真正的覆盖源（见下）。防混淆通过"可见标识"达成：
+   - UI 主菜单标题 `BeamMP Offline` + 侧栏 `OFFLINE` 徽标；
+   - Launcher 控制台 OFFLINE 横幅；Server 配置头注释；
+   - CI 注入的 `lua/ge/extensions/beammp/OFFLINE_BUILD.lua` 标记文件
+     （官方版 zip 无此文件，可用于脚本校验真伪）。
+5. **唯一覆盖途径 = 用户主动运行官方 Launcher**（它设计上就会用 backend 版
+   BeamMP.zip 覆盖本地，且会清理 multiplayer 目录）。这无法从我们这边以代码
+   阻止（那是官方程序的行为），处理方式：
+   - Launcher/文档明确警告"不要混用官方 Launcher"；
+   - 我们的 Launcher 把"Launcher 同目录的 BeamMP.zip"视为权威离线副本，
+     启动时若与游戏目录版本不同则**重新覆盖安装**（一键修复被官方版覆盖的
+     mod）。
 
 ## 4. 上游合并手册（保持与官方同步）
 
@@ -171,11 +218,12 @@ BeamMP-Offline 主仓库的 Release 里（或分别放在各自 Release）。
 
 如果这个对话丢失了，用类似下面的开场白即可无缝恢复：
 
-> "请先阅读 https://github.com/dksslq/BeamMP-Offline 仓库根目录的 CONTEXT.md 和
-> UPSTREAM-SYNC.md，那是项目的完整记忆。我们的目标是继续维护 BeamMP 离线版
-> （BeamMP-Offline / BeamMP-Server-Offline / BeamMP-Launcher-Offline 三个仓库）：
-> 保持与上游 BeamMP 官方仓库的合并同步（保护离线化补丁），保持 GitHub Actions
-> 自动构建，并继续改进离线体验。"
+> 我们在维护 BeamMP 的纯离线版（降低联机门槛，让无互联网用户内网联机，无需注册/账号/key）。
+> 请先完整阅读 https://github.com/dksslq/BeamMP-Offline 仓库根目录的 CONTEXT.md（项目记忆）
+> 和 UPSTREAM-SYNC.md（上游合并手册），相关仓库还有 dksslq/BeamMP-Server-Offline 和
+> dksslq/BeamMP-Launcher-Offline（各自也有 CONTEXT.md）。之后请：保持三仓库与上游
+> BeamMP 官方仓库的合并同步（保护离线化补丁，见各 CONTEXT.md 改动清单）、保持 GitHub
+> Actions 自动构建与 Release 发布、按 CONTEXT.md §8 的方向继续改进离线体验。
 
 **恢复后第一件事**：
 1. `git clone` 三个仓库（或检查本地是否已有），读 CONTEXT.md 全文；
