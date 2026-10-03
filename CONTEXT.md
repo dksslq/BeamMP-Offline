@@ -94,6 +94,8 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 | `.github/workflows/package.yml` | **新增**：把 `lua/ ui/ locales/ settings/ vehicles/ + LICENSE` 打包成 `BeamMP.zip`，push 到 main 产出 artifact，打 tag（`v*`）时附加到 Release。打包时**自动注入 `lua/ge/extensions/beammp/OFFLINE_BUILD.lua` 标记**（含 edition/version/commit/repository），用于识别离线版 mod（官方版 zip 没有此文件）。 |
 | `ui/ui-vue/mods/BeamMP/index.js` | 主菜单按钮标题 `BeamMP` → `BeamMP Offline`。 |
 | `ui/ui-vue/mods/BeamMP/layouts/BeamMPMain.vue` | 版本行加 `OFFLINE` 徽标（带 title 提示）。 |
+| **v1.0.2 UI 大清理**（用户要求：只留直连+列表+身份，其余 UI+逻辑全删） | 删除：Patreon 横幅+图标、账号面板（论坛头像/角色徽章/ID/登出）→ 换成轻量 Player 徽章（名字+Edit→身份页）；死组件 BeamMPHome/TilesView/ModsCard/DirectConnectCard/PauseMainCard/PauseDisconnectModal 及路由/常量；暂停玩家列表的"打开论坛主页"按钮（保留复制名字）；死路由守卫分支与 logout()。增强：服务器浏览器空状态引导（含主线服务器需官方账号的提示）；直连页记忆上次 IP/端口 + 输入校验（内联错误提示）+ 当前身份显示；GitHub 链接指向本仓库。净删约 1100 行。 |
+| `ui/ui-vue/mods/BeamMP/views/BeamMPTOSView.vue`（v1.0.2 补充） | 文案：昵称可随时在顶栏 Player 徽章或 Player Identity 页修改。 |
 
 ### 3.4 客户端 mod 分发方式（重要！）
 
