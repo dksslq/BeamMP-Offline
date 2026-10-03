@@ -3,6 +3,9 @@
     <header class="direct-header">
       <h2>{{ $tt("ui.common.beammp.direct_connect") }}</h2>
       <p>Connect to a BeamMP server using its address and port.</p>
+      <p class="identity-line">
+        Playing as <strong>{{ currentName || "Guest" }}</strong> — change your name on the Player Identity page.
+      </p>
     </header>
 
     <div class="direct-card">
@@ -10,10 +13,10 @@
         <label class="field field-address">
           <span>{{ $tt("ui.beammp.serverBrowser.serverIp") }}</span>
           <div class="input-shell">
-			<span class="field-prefix">IP</span>
+                        <span class="field-prefix">IP</span>
             <BngInput
               v-model.trim="ip"
-			  class="direct-input"
+                          class="direct-input"
               type="text"
               placeholder="127.0.0.1"
               :show-external-button="false"
@@ -24,7 +27,7 @@
         <label class="field field-port">
           <span>{{ $tt("ui.beammp.serverBrowser.serverPort") }}</span>
           <div class="input-shell">
-			<span class="field-prefix">:</span>
+                        <span class="field-prefix">:</span>
             <BngInput
               v-model.trim="port"
               type="text"
@@ -37,23 +40,68 @@
         </label>
       </div>
 
+      <p v-if="connectError" class="connect-error">{{ connectError }}</p>
+
       <div class="actions">
         <BngButton accent="secondary" @click="pasteFromClipboard">{{ $tt("ui.common.beammp.pasteFromClipboard") }}</BngButton>
-        <BngButton @click="connect">{{ $tt("ui.common.beammp.connect") }}</BngButton>
-        <BngButton accent="secondary" @click="favorite">{{ $tt("ui.beammp.serverBrowser.saveAsFavorite") }}</BngButton>
+        <BngButton :disabled="Boolean(connectError)" @click="connect">{{ $tt("ui.common.beammp.connect") }}</BngButton>
+        <BngButton accent="secondary" :disabled="Boolean(connectError)" @click="favorite">{{ $tt("ui.beammp.serverBrowser.saveAsFavorite") }}</BngButton>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref } from "vue"
+// === OFFLINE MODE (BeamMP-Offline) ===
+// Polish on top of upstream's direct connect: remembers the last used
+// address, validates the input before connecting, and shows the local
+// player identity. No account is involved.
+import { computed, onMounted, ref } from "vue"
 import { BngButton, BngDropdown, BngInput, ACCENTS } from "@/common/components/base"
 import { useBeamMPState } from "../shared/beammpState.js"
 
+const LAST_DIRECT_KEY = "beammpOfflineLastDirect"
 const ip = ref("")
 const port = ref("")
-const { addFavorite, connectToServer, directConnectFromClipboard } = useBeamMPState()
+const { addFavorite, connectToServer, directConnectFromClipboard, state } = useBeamMPState()
+
+const currentName = computed(() => String(state.auth.value?.username || ""))
+
+const addressPattern = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,251}[A-Za-z0-9])?$/
+const portValue = computed(() => Number(port.value))
+const connectError = computed(() => {
+  const value = String(ip.value || "").trim()
+  if (!value) return "" // empty means 127.0.0.1 (local server)
+  if (!addressPattern.test(value)) return "Invalid address: use an IPv4 address or a hostname (e.g. 192.168.1.20)"
+  const rawPort = String(port.value || "").trim()
+  if (rawPort === "") return ""
+  if (!/^[0-9]+$/.test(rawPort) || portValue.value < 1 || portValue.value > 65535) {
+    return "Invalid port: use a number between 1 and 65535 (leave empty for 30814)"
+  }
+  return ""
+})
+
+function restoreLastDirect() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_DIRECT_KEY) || "null")
+    if (saved && typeof saved === "object") {
+      if (typeof saved.ip === "string") ip.value = saved.ip
+      if (typeof saved.port === "string" || typeof saved.port === "number") port.value = String(saved.port)
+    }
+  } catch {
+    // ignore malformed saved data
+  }
+}
+
+function rememberLastDirect(nextIp, nextPort) {
+  try {
+    localStorage.setItem(LAST_DIRECT_KEY, JSON.stringify({ ip: nextIp, port: nextPort }))
+  } catch {
+    // storage may be unavailable - non-critical
+  }
+}
+
+onMounted(restoreLastDirect)
 
 async function pasteFromClipboard() {
   const text = String(await directConnectFromClipboard() || "")
@@ -64,12 +112,18 @@ async function pasteFromClipboard() {
 }
 
 async function connect() {
-  await connectToServer(ip.value || "127.0.0.1", port.value || "30814")
+  if (connectError.value) return
+  const useIp = ip.value || "127.0.0.1"
+  const usePort = port.value || "30814"
+  rememberLastDirect(useIp, usePort)
+  await connectToServer(useIp, usePort)
 }
 
 async function favorite() {
- let ipFav = ip.value || "127.0.0.1"
- let portFav = port.value || "30814"
+  if (connectError.value) return
+  const ipFav = ip.value || "127.0.0.1"
+  const portFav = port.value || "30814"
+  rememberLastDirect(ipFav, portFav)
   bngVue.toastr.success(`Adding ${ipFav}:${portFav} to favorites`, "BeamMP")
   addFavorite({
     ip: ipFav,
@@ -103,6 +157,24 @@ async function favorite() {
     margin: 0.25rem 0 0;
     color: var(--bng-cool-gray-300);
   }
+
+  .identity-line {
+    font-size: 0.85rem;
+
+    strong {
+      color: var(--bng-orange-300);
+    }
+  }
+}
+
+.connect-error {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(var(--bng-add-red-500-rgb), 0.65);
+  border-radius: var(--bng-corners-1);
+  background: rgba(var(--bng-add-red-500-rgb), 0.14);
+  color: var(--bng-add-red-300);
+  font-size: 0.85rem;
 }
 
 .direct-card {
@@ -153,7 +225,7 @@ async function favorite() {
   }
 
   .direct-input {
-	width: 100%;
+        width: 100%;
   }
 }
 

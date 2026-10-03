@@ -16,7 +16,24 @@
           >{{ visibleServers.length }}{{ state.view.value === 'servers' ? " / " + allServersCount : "" }} {{ $tt("ui.beammp.serverBrowser.visibleServers") }}</span>
         </header>
 
-        <table class="servers-table">
+        <div v-if="!allServersCount" class="empty-state">
+          <h3>No servers to show</h3>
+          <p>
+            The server list is empty. Join your friend's server via
+            <strong>Direct Connect</strong> — just enter their IP (port optional).
+            If the launcher has internet access, official public servers are listed here as well.
+          </p>
+          <p class="empty-state-note">
+            Note: mainline (official) servers verify BeamMP accounts with the online backend and
+            will reject this offline edition. Servers running BeamMP-Server-Offline accept
+            offline players without any account.
+          </p>
+          <div class="empty-state-actions">
+            <BngButton @click="requestServerList">{{ $tt("ui.common.beammp.refresh") }}</BngButton>
+            <BngButton accent="secondary" @click="goDirect">{{ $tt("ui.common.beammp.direct_connect") }}</BngButton>
+          </div>
+        </div>
+        <table v-else class="servers-table">
           <thead>
             <tr>
               <th @click="sortServers('location')">{{ $tt("ui.common.beammp.location") }}</th>
@@ -268,14 +285,19 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 import { BngButton, BngInput } from "@/common/components/base"
 import { vBngTextInput } from "@/common/directives"
 import { useBeamMPState } from "../shared/beammpState.js"
 import { icons as bngIcons } from "/ui/ui-vue/src/assets/fonts/bngIcons/bngIcons.js"
-import { BEAMMP_TEXT_STYLE_MAP } from "../shared/constants.js"
+import { BEAMMP_DIRECT_ROUTE_NAME, BEAMMP_TEXT_STYLE_MAP } from "../shared/constants.js"
 
 const route = useRoute()
+const router = useRouter()
+
+function goDirect() {
+  router.push({ name: BEAMMP_DIRECT_ROUTE_NAME })
+}
 const filtersRail = ref(null)
 const serversTbody = ref(null)
 const filtersRailMaxHeight = ref("")
@@ -1483,6 +1505,44 @@ onBeforeUnmount(() => {
 
   .details-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 16rem;
+  padding: 2rem 1.5rem;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: var(--bng-corners-2);
+  background: rgba(0, 0, 0, 0.25);
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  p {
+    max-width: 38rem;
+    margin: 0;
+    color: var(--bng-cool-gray-100);
+  }
+
+  .empty-state-note {
+    font-size: 0.82rem;
+    color: var(--bng-cool-gray-300);
+  }
+
+  .empty-state-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.35rem;
   }
 }
 </style>

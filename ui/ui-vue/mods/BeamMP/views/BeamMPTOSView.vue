@@ -18,7 +18,7 @@
       <h2>Your player name</h2>
       <p class="muted">
         Pick a display name other players will see. You can change it later from the
-        account screen. Leave empty to join servers as a Guest.
+        Player screen (top bar) or the Player Identity page. Leave empty to join servers as a Guest.
       </p>
       <div class="input-shell">
         <input

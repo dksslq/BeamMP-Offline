@@ -26,39 +26,12 @@
         </span>
       </div>
 
-      <div class="patreon-banner" :class="{ 'patreon-banner--ea': isEARole }">
-        <div class="patreon-content">
-          <img src="/ui/assets/BeamMP/icons/PATREON_SYMBOL_1_WHITE_RGB.svg" alt="Patreon" class="patreon-icon" />
-          <div class="patreon-text">
-            <span class="patreon-message" :style="{ color: isEARole ? '#9333eaeb' : '' }">{{ isEARole ? $tt("ui.beammp.patreon.message.ea") : $tt("ui.beammp.patreon.message.user") }}</span>
-          </div>
-        </div>
-        <BngButton class="patreon-button" accent="secondary" :style="{ visibility: isEARole ? 'hidden' : 'visible' }" @click="openExternal('https://www.patreon.com/BeamMP')">
-          {{ $tt("ui.common.beammp.readMore") }}
+      <div class="player-chip" aria-label="BeamMP player identity">
+        <span class="player-chip-label">Player</span>
+        <strong class="player-chip-name">{{ playerName || "Guest" }}</strong>
+        <BngButton class="player-chip-edit" accent="secondary" @click="editIdentity">
+          Edit
         </BngButton>
-      </div>
-
-      <div class="topbar-tools">
-        <section v-if="state.loggedIn.value" class="account-panel" :style="{ backgroundColor: isSpecialRole ? accountRoleColor : 'rgba(0, 0, 0, 0.35)' }" aria-label="BeamMP account">
-          <img
-            class="account-avatar"
-            :src="accountAvatar"
-            alt=""
-            @error="useFallbackAvatar"
-          />
-          <div class="account-details">
-            <small v-if="isSpecialRole" class="account-role-badge">{{ accountRole }}</small> 
-            <div class="account-name-wrapper">
-              <strong>{{ accountName }}</strong>
-            </div>
-            <div v-if="accountId" class="account-id-wrapper" @click="copyAccountId" :title="$tt('ui.beammp.accounts.copyid')">
-              <span class="account-id">ID: {{ accountId }}</span>
-            </div>
-          </div> 
-          <BngButton accent="destructive" class="logout-button" @click="handleLogout"> 
-            {{ $tt("ui.beammp.accounts.logout") }}
-          </BngButton>
-        </section>
       </div>
     </header>
 
@@ -77,13 +50,11 @@
         <button class="nav-btn category-favorite" :class="{ active: isServerView('favorites') }" @click="gotoView('favorites')">{{ $tt("ui.common.beammp.favorites") }}</button>
         <button class="nav-btn" :class="{ active: isServerView('recent') }" @click="gotoView('recent')">{{ $tt("ui.common.beammp.recent") }}</button>
         <button class="nav-btn" :class="{ active: route.name === BEAMMP_DIRECT_ROUTE_NAME }" @click="gotoRoute(BEAMMP_DIRECT_ROUTE_NAME)">{{ $tt("ui.common.beammp.direct_connect") }}</button>
-        <!--<button class="nav-btn" :class="{ active: route.name === BEAMMP_TILES_ROUTE_NAME }" @click="gotoRoute(BEAMMP_TILES_ROUTE_NAME)">Tiles</button>-->
-
         <div class="spacer" />
 
         <!-- OFFLINE MODE: forum/discord/patreon/docs links removed - this build
              never needs or uses any online BeamMP service. -->
-        <button class="nav-btn secondary external-link" @click="openExternal('https://github.com/BeamMP/BeamMP')">
+        <button class="nav-btn secondary external-link" @click="openExternal('https://github.com/dksslq/BeamMP-Offline')">
           <img src="/ui/assets/BeamMP/icons/github-mark.svg" alt="" class="external-link-icon" />
           <span>{{ $tt("ui.common.beammp.github") }}</span>
         </button>
@@ -149,7 +120,6 @@ import {
   BEAMMP_LAUNCHER_ROUTE_NAME,
   BEAMMP_LOGIN_ROUTE_NAME,
   BEAMMP_SERVERS_ROUTE_NAME,
-  BEAMMP_TILES_ROUTE_NAME,
   BEAMMP_TOS_ROUTE_NAME,
 } from "../shared/constants.js"
 import { useBeamMPState } from "../shared/beammpState.js"
@@ -168,7 +138,6 @@ const {
   state,
   closeLoadingOverlay,
   loadFavorites,
-  logout,
   openExternal,
   approveSecurityPrompt,
   rejectSecurityPrompt,
@@ -208,49 +177,10 @@ async function scrollContentToTop() {
   if (contentPanel.value) contentPanel.value.scrollTop = 0
 }
 
-const fallbackAvatar = "/ui/ui-vue/src/assets/fonts/bngIcons/svg/personSolid.svg"
-const accountAvatar = computed(() => {
-  const avatar = String(state.auth.value?.avatar || "")
-  if (!avatar || avatar.includes("Q291bGQgbm90IGVzdGFibGlzaCBjb25uZWN0aW9u")) {
-    return fallbackAvatar
-  }
-  return avatar
-})
-const accountName = computed(() => {
-  return state.auth.value?.username
-})
-const accountRole = computed(() => {
-  const roleTag = state.auth.value?.roleInfo?.tag
-  return roleTag.replace(/^\s*\[|\]\s*$/g, "").trim() || state.auth.value?.role
-})
-const accountId = computed(() => {
-  return state.auth.value?.id
-})
-const accountRoleColor = computed(() => {
-  return state.auth.value?.color
-})
-const isSpecialRole = computed(() => {
-  const role = state.auth.value?.role || "USER"
-  return role !== "USER"
-})
+const playerName = computed(() => String(state.auth.value?.username || ""))
 
-const isEARole = computed(() => {
-  const role = state.auth.value?.role || ""
-  return role === "EA" || role === "ET" || role === "MDEV" || role === "STAFF"
-})
-
-function useFallbackAvatar(event) {
-  const image = event.currentTarget
-  image.onerror = null
-  image.src = fallbackAvatar
-}
-
-function copyAccountId() {
-  const id = state.auth.value?.id
-  if (id && /^\d+$/.test(id)) {
-    bngApi.engineLua(`setClipboard("${id}")`)
-    bngVue.toastr.info("Copied ID to clipboard", "BeamMP")
-  }
+function editIdentity() {
+  router.push({ name: BEAMMP_LOGIN_ROUTE_NAME })
 }
 
 function updateInfobarMarginBottom() {
@@ -260,11 +190,6 @@ function updateInfobarMarginBottom() {
   if (height > 0) {
     infobarMarginBottom.value = `${height-24}px`
   }
-}
-
-async function handleLogout() {
-  await logout()
-  await router.replace({ name: BEAMMP_LOGIN_ROUTE_NAME })
 }
 
 async function goBack() {
@@ -321,7 +246,6 @@ onMounted(async () => {
     BEAMMP_CURRENT_SERVER_ROUTE_NAME,
     BEAMMP_DIRECT_ROUTE_NAME,
     BEAMMP_SERVERS_ROUTE_NAME,
-    BEAMMP_TILES_ROUTE_NAME,
   ])
   if (!contentRoutes.has(route.name)) {
     router.replace({ name: BEAMMP_SERVERS_ROUTE_NAME })
@@ -395,176 +319,40 @@ onBeforeUnmount(() => {
   }
 }
 
-.patreon-banner {
+.player-chip {
   display: flex;
-  flex: 1;
-  min-width: 12rem;
   align-items: center;
-  gap: 0;
+  gap: 0.45rem;
   padding: 0.3rem 0.6rem;
   border-radius: var(--bng-corners-2);
   background: rgba(0, 0, 0, 0.35);
   order: 2;
   height: 100%;
 
-  &.patreon-banner--ea {
-    background: rgba(0, 0, 0, 0.35);
+  .player-chip-label {
+    color: var(--bng-cool-gray-200);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .patreon-content {
-    display: flex;
-    flex: 1;
-    min-width: 0;
-    align-items: center;
-    gap: 0.35rem;
-    justify-content: center;
-  }
-
-  .patreon-icon {
-    width: 1rem;
-    height: 1rem;
-    flex: 0 0 1rem;
-    object-fit: contain;
-    filter: brightness(1.6);
-  }
-
-  .patreon-text {
-    display: flex;
-    flex: 1;
-    min-width: 0;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .patreon-message {
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-    white-space: nowrap;
+  .player-chip-name {
+    max-width: 12rem;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 600;
-    text-align: center;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
-  .patreon-button {
+  .player-chip-edit {
     flex: 0 0 auto;
     font-size: 0.65rem;
     padding: 0.3rem 0.5rem;
     --bng-transition-speed: 0s;
   }
-}
-
-.topbar-tools {
-  display: flex;
-  min-width: 0;
-  align-items: stretch;
-  justify-content: flex-end;
-  flex-wrap: nowrap;
-  gap: 0.4rem;
-  order: 3;
-}
-
-.account-panel {
-  display: flex;
-  flex: 0 1 19rem;
-  min-width: 14.5rem;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--bng-corners-2);
-  background: rgba(0, 0, 0, 0.42);
-  transition: background-color 150ms ease;
-}
- 
-.account-avatar {
-  box-sizing: border-box;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 2rem;
-  object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  background: var(--bng-cool-gray-700);
-}
-
-.account-details {
-  display: flex;
-  min-width: 5rem;
-  flex: 1;
-  flex-direction: column;
-  line-height: 1;
-  padding: 0.15rem 0.3rem;
-  border-radius: 0.4rem;
-  text-align: center;
-  justify-content: center;
-
-  .account-role-badge {
-    margin-bottom: 0.05rem;
-    color: white;
-    font-size: 0.55rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    text-align: center;
-    letter-spacing: 0.05em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-    opacity: 0.9;
-  }
-
-  .account-name-wrapper {
-    display: inline-block;
-    padding: 0;
-    background-color: transparent;
-    text-align: center;
-
-    strong {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: white;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      font-size: 0.75rem;
-    }
-  }
-
-  .account-id-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0.1rem;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .account-id {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.55rem;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  }
-}
-
-.logout-button {
-  flex: 0 0 auto;
-  font-size: 0.65rem;
-  padding: 0.25rem 0.4rem;
-  --bng-bg-enabled: var(--bng-add-red-600);
-  --bng-bg-hover: var(--bng-add-red-500);
-  --bng-bg-active: var(--bng-add-red-700);
-  --bng-bg-border-enabled: transparent;
-  --bng-bg-border-hover: transparent;
-  --bng-bg-border-active: transparent;
-  --bng-text-enabled: white;
-  --bng-text-hover: white;
-  --bng-text-active: white;
-  --bng-bg-enabled-opacity: 1;
-  --bng-bg-hover-opacity: 1;
-  --bng-bg-active-opacity: 1;
-  color: white !important;
-  transition: all 150ms ease;
 }
 
 .main-grid {
@@ -733,34 +521,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.external-link--patreon {
-  border-color: rgba(var(--bng-add-green-550-rgb), 0.92);
-  background: rgba(var(--bng-add-green-550-rgb), 0.2);
-
-  &:hover {
-    border-color: rgba(var(--bng-add-green-550-rgb), 1);
-    background: rgba(var(--bng-add-green-550-rgb), 0.32);
-  }
-
-  .external-link-subtitle {
-    color: var(--bng-add-green-200);
-  }
-
-  &.external-link--patreon-ea {
-    border-color: rgba(147, 51, 234, 0.92);
-    background: rgba(147, 51, 234, 0.2);
-
-    &:hover {
-      border-color: rgba(147, 51, 234, 1);
-      background: rgba(147, 51, 234, 0.32);
-    }
-
-    .external-link-subtitle {
-      color: rgba(216, 180, 254, 1);
-    }
-  }
-}
-
 .spacer {
   flex: 1;
 }
@@ -892,23 +652,14 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
   }
 
-  .patreon-banner {
+  .player-chip {
     order: 1;
     width: 100%;
     min-width: 10rem;
     max-width: none;
 
-    .patreon-title {
-      font-size: 0.65rem;
-    }
-
-    .patreon-message {
+    .player-chip-name {
       font-size: 0.85rem;
-    }
-
-    .patreon-button {
-      font-size: 0.6rem;
-      padding: 0.25rem 0.4rem;
     }
   }
 
@@ -916,20 +667,9 @@ onBeforeUnmount(() => {
     order: 2;
   }
 
-  .topbar-tools {
-    order: 3;
-    gap: 0.35rem;
-    margin-right: 2rem;
-    max-width: calc(100% - 2rem);
-  }
-
   .metrics {
     padding-inline: 0.55rem;
     font-size: 0.88rem;
-  }
-
-  .account-panel {
-    min-width: 12.5rem;
   }
 
   .main-grid {

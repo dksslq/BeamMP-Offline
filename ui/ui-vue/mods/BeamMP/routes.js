@@ -1,21 +1,17 @@
 import BeamMPMainMenu from "./layouts/BeamMPMain.vue"
-import BeamMPHome from "./layouts/BeamMPHome.vue"
 import BeamMPTOSView from "./views/BeamMPTOSView.vue"
 import BeamMPLauncherView from "./views/BeamMPLauncherView.vue"
 import BeamMPLoginView from "./views/BeamMPLoginView.vue"
-import BeamMPTilesView from "./views/BeamMPTilesView.vue"
 import BeamMPServersView from "./views/BeamMPServersView.vue"
 import BeamMPCurrentServerView from "./views/BeamMPCurrentServerView.vue"
 import BeamMPDirectView from "./views/BeamMPDirectView.vue"
 import {
   BEAMMP_CURRENT_SERVER_ROUTE_NAME,
   BEAMMP_DIRECT_ROUTE_NAME,
-  //BEAMMP_HOME_ROUTE_NAME,
   BEAMMP_LAUNCHER_ROUTE_NAME,
   BEAMMP_LOGIN_ROUTE_NAME,
   BEAMMP_ROUTE_NAME,
   BEAMMP_SERVERS_ROUTE_NAME,
-  BEAMMP_TILES_ROUTE_NAME,
   BEAMMP_TOS_ROUTE_NAME,
 } from "./shared/constants.js"
 
@@ -30,7 +26,6 @@ export const routeRecords = [
         path: "",
         name: BEAMMP_ROUTE_NAME,
         redirect: { name: BEAMMP_LAUNCHER_ROUTE_NAME },
-        //redirect: { name: BEAMMP_HOME_ROUTE_NAME },
         meta: {
           luaRoute: {
             title: "BeamMP",
@@ -39,11 +34,6 @@ export const routeRecords = [
           },
         },
       },
-      /*{
-        path: "home",
-        name: BEAMMP_HOME_ROUTE_NAME,
-        component: BeamMPHome,
-      },*/
       {
         path: "tos",
         name: BEAMMP_TOS_ROUTE_NAME,
@@ -58,11 +48,6 @@ export const routeRecords = [
         path: "login",
         name: BEAMMP_LOGIN_ROUTE_NAME,
         component: BeamMPLoginView,
-      },
-      {
-        path: "tiles",
-        name: BEAMMP_TILES_ROUTE_NAME,
-        component: BeamMPTilesView,
       },
       {
         path: "servers/:view?",

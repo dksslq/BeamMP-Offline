@@ -493,11 +493,9 @@ async function guestLogin() {
   extensionCommand("MPCoreNetwork", "login")
 }
 
-async function logout() {
-  extensionCommand("MPCoreNetwork", "logout")
-  state.loggedIn.value = false
-  state.auth.value = {}
-}
+// OFFLINE MODE: upstream logout() (account sign-out via the launcher) was
+// removed - there are no accounts, the player name is edited on the identity
+// screen instead.
 
 async function connectToServer(ip, port, name = "", skipModWarning = false) {
   const useIp = (ip || "127.0.0.1").trim()
@@ -778,7 +776,6 @@ export function useBeamMPState(events) {
     isRecent,
     loadFavorites,
     login,
-    logout,
     modList,
     openExternal,
     refreshConnectionState,

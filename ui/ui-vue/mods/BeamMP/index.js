@@ -2,7 +2,7 @@
 // import bridge and route definitions
 import { useBridge } from "@/bridge"
 import { ROUTE_SOURCE_ID, routeRecords } from "./routes.js"
-import { BEAMMP_ROUTE_NAME, BEAMMP_TOS_ROUTE_NAME, BEAMMP_LAUNCHER_ROUTE_NAME, BEAMMP_LOGIN_ROUTE_NAME } from "./shared/constants.js"
+import { BEAMMP_ROUTE_NAME, BEAMMP_TOS_ROUTE_NAME, BEAMMP_LAUNCHER_ROUTE_NAME } from "./shared/constants.js"
 import { useBeamMPState } from "./shared/beammpState.js"
 import { $translate } from "@/services/translation"
 import { ACCENTS } from "@/common/components/base"
@@ -123,11 +123,11 @@ async function showBeamMPDialog(options = {}) {
 }
 
 async function isLauncherConnected() {
-	return new Promise(function(resolve, reject) {
-		bngApi.engineLua("MPCoreNetwork.isLauncherConnected()", (data) => {
-			resolve(data);
-		});
-	});
+        return new Promise(function(resolve, reject) {
+                bngApi.engineLua("MPCoreNetwork.isLauncherConnected()", (data) => {
+                        resolve(data);
+                });
+        });
 }
 
 export async function onLoad() {
@@ -148,7 +148,6 @@ export async function onLoad() {
     id: TAB_ID,
     label: TITLE,
     icon: "peopleOutline",
-    //card2ComponentName: `${MOD_ROOT}/cards/BeamMPPausePlayersCard.vue`,
   })
   // then, register rail buttons for that tab
   await lua.extensions.ui_pause_actions.registerModButton({
@@ -156,11 +155,10 @@ export async function onLoad() {
     tabId: TAB_ID,
     label: $translate.instant("ui.common.beammp.playerList"),
     icon: "itemsTree",
-    //componentName: `${MOD_ROOT}/cards/BeamMPPauseMainCard.vue`,
     componentName: `${MOD_ROOT}/cards/BeamMPPausePlayersCard.vue`,
   })
   await lua.extensions.ui_pause_actions.registerModButton({
-    id: "beammp-pause-server-details	",
+    id: "beammp-pause-server-details    ",
     tabId: TAB_ID,
     label: $translate.instant("ui.common.beammp.serverDetails"),
     icon: "globeSimplified",
@@ -180,10 +178,6 @@ export async function onLoad() {
 
       if (state.tosAccepted.value == false && to.name !== BEAMMP_TOS_ROUTE_NAME) {
         return { name: BEAMMP_TOS_ROUTE_NAME }
-      }
-
-      if (state.auth.value == null && to.name !== BEAMMP_LOGIN_ROUTE_NAME) {
-        return { name: BEAMMP_LOGIN_ROUTE_NAME }
       }
       
     }

@@ -1,7 +1,7 @@
 <template>
   <div class="card">
     <BngCardHeading type="ribbon" outline class="beammp-player-list-heading">
-		{{ $tt("ui.common.beammp.playerList") }} ({{ players.length }} {{ players.length === 1 ? "player" : "players" }} connected)
+                {{ $tt("ui.common.beammp.playerList") }} ({{ players.length }} {{ players.length === 1 ? "player" : "players" }} connected)
     </BngCardHeading>
 
     <div class="card-content">
@@ -20,14 +20,6 @@
         :aria-label="$tt('ui.apps.beammp.playerlist.copyname')"
         :title="$tt('ui.apps.beammp.playerlist.copyname')"
         @click="copyName(player.name)"
-      />
-      <BngButton
-        class="player-action"
-        :accent="ACCENTS.menu"
-        :icon="icons.external"
-        :aria-label="$tt('ui.apps.beammp.playerlist.openProfile')"
-        :title="$tt('ui.apps.beammp.playerlist.openProfile')"
-        @click="openProfile(player.name)"
       />
       </div>
     </div>
@@ -73,10 +65,8 @@ function copyName(name) {
   api.engineLua(`setClipboard(${api.serializeToLua(String(name || ""))})`)
 }
 
-function openProfile(name) {
-  const url = `https://forum.beammp.com/u/${name}/summary`
-  extensionCommand("MPCoreNetwork", "openURL", api.serializeToLua(url))
-}
+// OFFLINE MODE: the upstream "open forum profile" button was removed -
+// player names are local identities in the offline edition, not forum accounts.
 
 onMounted(() => {
   events.on("onBeamMPPlayerList", onPlayerList)
@@ -108,10 +98,10 @@ onUnmounted(() => {
 }
 
 .card-content {
-	display: flex;
-	flex-direction: column;
-	padding: 0 0.5rem 0.5rem 0.5rem;
-	gap: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        padding: 0 0.5rem 0.5rem 0.5rem;
+        gap: 0.5rem;
 }
 
 .count {
@@ -139,7 +129,7 @@ onUnmounted(() => {
   background-color: var(--bng-cool-gray-750);
   border-color: var(--bng-cool-gray-500);
   &:hover {
-	background-color: ar(--bng-cool-gray-700);
+        background-color: ar(--bng-cool-gray-700);
   };
 }
 
