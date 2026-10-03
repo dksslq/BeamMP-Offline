@@ -71,9 +71,8 @@
         </div>
 
         <button class="nav-btn" :class="{ active: isServerView('servers') }" @click="gotoView('servers')">{{ $tt("ui.common.beammp.servers") }}</button>
-        <button class="nav-btn category-official" :class="{ active: isServerView('official') }" @click="gotoView('official')">{{ $tt("ui.common.beammp.official") }}</button>
-        <button class="nav-btn category-featured" :class="{ active: isServerView('featured') }" @click="gotoView('featured')">{{ $tt("ui.common.beammp.featured") }}</button>
-        <button class="nav-btn category-partner" :class="{ active: isServerView('partner') }" @click="gotoView('partner')">{{ $tt("ui.common.beammp.partner") }}</button>
+        <!-- OFFLINE MODE: official/featured/partner categories come from the online
+             server list which does not exist offline; hide these filters. -->
         <button class="nav-btn category-favorite" :class="{ active: isServerView('favorites') }" @click="gotoView('favorites')">{{ $tt("ui.common.beammp.favorites") }}</button>
         <button class="nav-btn" :class="{ active: isServerView('recent') }" @click="gotoView('recent')">{{ $tt("ui.common.beammp.recent") }}</button>
         <button class="nav-btn" :class="{ active: route.name === BEAMMP_DIRECT_ROUTE_NAME }" @click="gotoRoute(BEAMMP_DIRECT_ROUTE_NAME)">{{ $tt("ui.common.beammp.direct_connect") }}</button>
@@ -81,30 +80,9 @@
 
         <div class="spacer" />
 
-        <button 
-          class="nav-btn secondary external-link external-link--patreon" 
-          :class="{ 'external-link--patreon-ea': isEARole }"
-          @click="openExternal('https://www.patreon.com/BeamMP')"
-        >
-          <img src="/ui/assets/BeamMP/icons/PATREON_SYMBOL_1_WHITE_RGB.svg" alt="" class="external-link-icon" />
-          <span class="external-link-copy">
-            <span class="external-link-title">{{ $tt("ui.common.beammp.patreon") }}</span>
-            <small class="external-link-subtitle">{{ isEARole ? $tt("ui.beammp.patreon.message.ea") : $tt("ui.beammp.patreon.message.user") }}</small>
-          </span>
-        </button>
-        <button class="nav-btn secondary external-link" @click="openExternal('https://forum.beammp.com')">
-          <img src="/ui/ui-vue/src/assets/fonts/bngIcons/svg/chatBubble.svg" alt="" class="external-link-icon external-link-icon--invert" />
-          <span>{{ $tt("ui.common.beammp.forum") }}</span>
-        </button>
-        <button class="nav-btn secondary external-link" @click="openExternal('https://discord.gg/BeamMP')">
-          <img src="/ui/assets/BeamMP/icons/icon_clyde_white_RGB.svg" alt="" class="external-link-icon" />
-          <span>{{ $tt("ui.common.beammp.discord") }}</span>
-        </button>
-        <button class="nav-btn secondary external-link" @click="openExternal('https://docs.beammp.com')">
-          <img src="/ui/ui-vue/src/assets/fonts/bngIcons/svg/info.svg" alt="" class="external-link-icon external-link-icon--invert" />
-          <span>{{ $tt("ui.common.beammp.docs") }}</span>
-        </button>
-        <button class="nav-btn secondary external-link" @click="openExternal('https://github.com/BeamMP/')">
+        <!-- OFFLINE MODE: forum/discord/patreon/docs links removed - this build
+             never needs or uses any online BeamMP service. -->
+        <button class="nav-btn secondary external-link" @click="openExternal('https://github.com/BeamMP/BeamMP')">
           <img src="/ui/assets/BeamMP/icons/github-mark.svg" alt="" class="external-link-icon" />
           <span>{{ $tt("ui.common.beammp.github") }}</span>
         </button>

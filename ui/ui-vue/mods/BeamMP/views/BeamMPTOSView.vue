@@ -1,51 +1,92 @@
 <template>
   <section class="panel">
-    <h1>{{ $tt("ui.beammp.tos.title") }}</h1>
+    <h1>Welcome to BeamMP — Offline Edition</h1>
 
-    <div class="block">
-      <h2>{{ $tt("ui.beammp.tos") }}</h2>
+    <div class="block intro">
       <p>
-        {{ $tt("ui.beammp.tos.description1") }}
-        <a href="#" @click.prevent="openExternal('https://forum.beammp.com/topic/94/terms-of-use-v1-0')">here</a>.
-        {{ $tt("ui.beammp.tos.description2") }}
+        This is a fully <strong>offline</strong> build of BeamMP: no account, no forum key,
+        no Discord and no internet connection are required. Host a server on your LAN,
+        share its IP address with friends, and join via <strong>Direct Connect</strong>.
       </p>
-      <label><input v-model="tosAccepted" type="checkbox" /> I accept the Terms of Service</label>
+      <p class="muted">
+        The upstream multiplayer rules still apply as a common-sense guideline: be respectful,
+        no griefing, and respect server owners' rules.
+      </p>
     </div>
 
     <div class="block">
-      <h2>{{ $tt("ui.common.beammp.rules") }}</h2>
-      <p>
-        {{ $tt("ui.beammp.rules.description1") }}
-        <a href="#" @click.prevent="openExternal('https://docs.beammp.com/community/rules/')">here</a>.
-        {{ $tt("ui.beammp.rules.description2") }}
+      <h2>Your player name</h2>
+      <p class="muted">
+        Pick a display name other players will see. You can change it later from the
+        account screen. Leave empty to join servers as a Guest.
       </p>
-      <label><input v-model="rulesAccepted" type="checkbox" /> I accept the Multiplayer Rules</label>
+      <div class="input-shell">
+        <input
+          id="beammp-offline-name"
+          v-model="playerName"
+          v-bng-text-input
+          type="text"
+          maxlength="32"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          placeholder="e.g. SpeedRacer"
+          @keyup.enter="proceed"
+        />
+      </div>
+    </div>
+
+    <div class="block">
+      <label><input v-model="tosAccepted" type="checkbox" /> I understand this is an offline community build and accept the guideline above</label>
     </div>
 
     <div class="actions">
-      <BngButton :disabled="!canContinue" @click="proceed">{{ $tt("ui.common.continue") }}</BngButton>
+      <BngButton :disabled="!canContinue" @click="proceed">{{ startLabel }}</BngButton>
+      <BngButton accent="secondary" :disabled="!tosAccepted" @click="proceedAsGuest">Play as Guest</BngButton>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from "vue"
+// === OFFLINE MODE (BeamMP-Offline) ===
+// Upstream this screen forced acceptance of the BeamMP online Terms of Service
+// and Rules (links to forum.beammp.com / docs.beammp.com). The offline edition
+// replaces it with a local welcome screen that also collects the player name.
+import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { BngButton } from "@/common/components/base"
-import { BEAMMP_LOGIN_ROUTE_NAME } from "../shared/constants.js"
+import { vBngTextInput } from "@/common/directives"
+import { BEAMMP_SERVERS_ROUTE_NAME } from "../shared/constants.js"
 import { useBeamMPState } from "../shared/beammpState.js"
 
 const router = useRouter()
-const { acceptTos, openExternal } = useBeamMPState()
+const { acceptTos, login, guestLogin, state } = useBeamMPState()
 const tosAccepted = ref(false)
-const rulesAccepted = ref(false)
-const canContinue = computed(() => tosAccepted.value && rulesAccepted.value)
+const playerName = ref(state.auth.value?.username || "")
+const canContinue = computed(() => tosAccepted.value)
+const startLabel = computed(() => (playerName.value.trim() ? "Start Playing" : "Continue"))
 
-function proceed() {
+async function proceed() {
   if (!canContinue.value) return
   acceptTos()
-  router.push({ name: BEAMMP_LOGIN_ROUTE_NAME })
+  if (playerName.value.trim()) {
+    await login(playerName.value.trim(), "")
+  }
+  router.push({ name: BEAMMP_SERVERS_ROUTE_NAME })
 }
+
+async function proceedAsGuest() {
+  if (!tosAccepted.value) return
+  acceptTos()
+  await guestLogin()
+  router.push({ name: BEAMMP_SERVERS_ROUTE_NAME })
+}
+
+// if the user is somehow already logged in with a name, prefill happened above;
+// keep in sync if auth changes while typing (e.g. saved name restored late)
+watch(() => state.auth.value?.username, value => {
+  if (value && !playerName.value) playerName.value = value
+})
 </script>
 
 <style scoped lang="scss">
@@ -61,9 +102,51 @@ function proceed() {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.intro {
+  strong {
+    color: var(--bng-orange-300);
+  }
+}
+
+.muted {
+  color: var(--bng-cool-gray-100);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.input-shell {
+  display: flex;
+  min-height: 2.7rem;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--bng-corners-1);
+  background: rgba(7, 10, 14, 0.78);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.42);
+  }
+
+  &:focus-within {
+    border-color: var(--bng-orange-500);
+    box-shadow: 0 0 0 0.13rem rgba(var(--bng-orange-500-rgb), 0.32);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.55rem 0.7rem;
+    border: 0;
+    outline: 0;
+    color: var(--bng-off-white);
+    background: transparent;
+    font: inherit;
+  }
 }
 
 p {

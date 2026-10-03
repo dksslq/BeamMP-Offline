@@ -5,60 +5,49 @@
 
       <p v-if="state.loginError.value && hasTriedToLogin" class="error">{{ state.loginError.value }}</p>
 
-      
-        <h2 class="login-title">{{ $tt("ui.beammp.accounts.loginDescription2temp") }}</h2>
-      <template v-if="mode === 'account'">
-        <h2 class="login-title">{{ $tt("ui.beammp.accounts.loginDescription1") }}</h2>
+      <h2 class="login-title">Player Identity</h2>
+      <p class="guest-copy">
+        Offline edition — pick the name other players will see. No account or password needed.
+      </p>
 
-        <div class="input-group">
-          <label for="beammp-login-username">{{ $tt("ui.beammp.accounts.login.username") }}</label>
-          <div class="input-shell">
-            <input
-              id="beammp-login-username"
-              v-model="username"
-              v-bng-text-input
-              type="text"
-              autocomplete="username"
-              autocapitalize="none"
-              spellcheck="false"
-            />
-          </div>
+      <div class="input-group">
+        <label for="beammp-login-username">Player name</label>
+        <div class="input-shell">
+          <input
+            id="beammp-login-username"
+            v-model="username"
+            v-bng-text-input
+            type="text"
+            maxlength="32"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="e.g. SpeedRacer"
+            @keyup.enter="submitLogin"
+          />
         </div>
+      </div>
 
-        <div class="input-group">
-          <label for="beammp-login-password">{{ $tt("ui.beammp.accounts.login.password") }}</label>
-          <div class="input-shell">
-            <input
-              id="beammp-login-password"
-              v-model="password"
-              v-bng-text-input
-              type="password"
-              autocomplete="current-password"
-              @keyup.enter="submitLogin"
-            />
-          </div>
-        </div>
+      <div class="actions">
+        <BngButton @click="submitLogin">Save Name</BngButton>
+        <BngButton accent="secondary" @click="submitGuest">Play as Guest</BngButton>
+        <BngButton accent="secondary" @click="goBack">Back</BngButton>
+      </div>
 
-        <div class="actions">
-          <BngButton @click="submitLogin">{{ $tt("ui.beammp.accounts.login") }}</BngButton>
-          <BngButton accent="secondary" @click="register">{{ $tt("ui.common.beammp.register") }}</BngButton>
-          <BngButton accent="secondary" @click="switchToGuest">{{ $tt("ui.beammp.accounts.playAsGuest") }}</BngButton>
-        </div>
-      </template>
-
-      <template v-else>
-        <p class="guest-copy">{{ $tt("ui.beammp.accounts.guestDescription1") }}</p>
-        <div class="actions">
-          <BngButton @click="switchToAccount">{{ $tt("ui.beammp.accounts.iHaveAnAccount") }}</BngButton>
-          <BngButton accent="secondary" @click="submitGuest">{{ $tt("ui.beammp.accounts.playAsGuest") }}</BngButton>
-        </div>
-      </template>
+      <p class="current-name" v-if="state.auth.value?.username">
+        Current name: <strong>{{ state.auth.value.username }}</strong>
+      </p>
     </article>
   </section>
 </template>
 
 <script setup>
-import { ref, watch } from "vue"
+// === OFFLINE MODE (BeamMP-Offline) ===
+// Upstream this screen authenticated against the BeamMP forum account system
+// (username + password sent to auth.beammp.com via the launcher) and offered a
+// registration link. The offline edition has no accounts: the player just picks
+// a local display name which the launcher stores and offline servers accept.
+import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { BngButton } from "@/common/components/base"
 import { vBngTextInput } from "@/common/directives"
@@ -67,13 +56,11 @@ import { useBeamMPState } from "../shared/beammpState.js"
 
 const router = useRouter()
 const username = ref("")
-const password = ref("")
 const hasTriedToLogin = ref(false)
-const mode = ref("account")
 const LEGACY_LOGO_PATH = "ui/assets/BeamMP/beammp_new_cropped.png"
 const LOGO_FALLBACK = "/ui/assets/BeamMP/icons/account-multiple.svg"
 const logoSrc = ref(LEGACY_LOGO_PATH)
-const { login, guestLogin, openExternal, state } = useBeamMPState()
+const { login, guestLogin, state } = useBeamMPState()
 
 function onLogoError() {
   if (logoSrc.value !== LOGO_FALLBACK) {
@@ -81,18 +68,9 @@ function onLogoError() {
   }
 }
 
-function switchToGuest() {
-  mode.value = "guest"
-}
-
-function switchToAccount() {
-  mode.value = "account"
-}
-
 async function submitLogin() {
-  await login(username.value, password.value)
+  await login(username.value, "")
   hasTriedToLogin.value = true
-  password.value = ""
 }
 
 async function submitGuest() {
@@ -100,13 +78,19 @@ async function submitGuest() {
   await guestLogin()
 }
 
-function register() {
-  openExternal("https://forum.beammp.com/signup")
+function goBack() {
+  router.back()
 }
 
+function toServers() {
+  router.replace({ name: BEAMMP_SERVERS_ROUTE_NAME })
+}
+
+// once a name is saved (or guest chosen) jump to the server list
+import { watch } from "vue"
 watch(() => state.loggedIn.value, value => {
-  if (value) router.replace({ name: BEAMMP_SERVERS_ROUTE_NAME })
-}, { immediate: true })
+  if (value) toServers()
+})
 </script>
 
 <style scoped lang="scss">
@@ -183,33 +167,19 @@ watch(() => state.loggedIn.value, value => {
     color: var(--bng-off-white);
     background: transparent;
     font: inherit;
-
-    &:-webkit-autofill {
-      -webkit-text-fill-color: var(--bng-off-white);
-      box-shadow: 0 0 0 1000px rgb(12, 15, 20) inset;
-    }
   }
-}
-
-.field-prefix {
-  display: grid;
-  min-width: 2.6rem;
-  place-items: center;
-  padding: 0 0.5rem;
-  border-right: 1px solid rgba(255, 255, 255, 0.14);
-  color: var(--bng-cool-gray-200);
-  background: rgba(255, 255, 255, 0.07);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.password-prefix {
-  letter-spacing: 0.08rem;
 }
 
 .guest-copy {
   color: var(--bng-cool-gray-100);
   margin: 0;
+  text-align: center;
+}
+
+.current-name {
+  margin: 0;
+  text-align: center;
+  color: var(--bng-cool-gray-100);
 }
 
 .actions {
@@ -228,7 +198,6 @@ watch(() => state.loggedIn.value, value => {
   margin: 0;
   text-align: center;
   color: var(--bng-add-red-500);
-
 }
 
 @media (max-width: 680px) {

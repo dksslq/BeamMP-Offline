@@ -476,12 +476,15 @@ async function connectToLauncher() {
 }
 
 async function login(username, password) {
+  // === OFFLINE MODE (BeamMP-Offline) ===
+  // No account/password required. The name is stored locally by the
+  // launcher and used as the player's in-game name on offline servers.
   state.loginError.value = ""
-  if (!username || !password) {
-    state.loginError.value = "Missing credentials"
+  if (!username) {
+    state.loginError.value = "Please enter a player name (or play as guest)"
     return
   }
-  const credentials = { username: username.trim(), password: password.trim() }
+  const credentials = { username: username.trim(), password: "" }
   extensionCommand("MPCoreNetwork", "login", bridgeApi.serializeToLua(credentials))
 }
 

@@ -1,3 +1,16 @@
+# BeamMP-Offline（客户端 mod）
+
+> **离线版说明**：这是 [BeamMP](https://github.com/BeamMP/BeamMP) 客户端 mod 的纯离线分支。
+> **无需注册论坛账号 / 无需 Discord / 无需任何互联网** —— 内网联机，输入服务器 IP 即可开玩。
+>
+> - 🧠 **项目完整记忆与上下文**：[CONTEXT.md](./CONTEXT.md)（新会话/新维护者必读）
+> - 🔄 **上游同步手册**：[UPSTREAM-SYNC.md](./UPSTREAM-SYNC.md)
+> - 📦 本仓库 CI 自动打包 `BeamMP.zip`（Actions artifact / Release）
+> - 配套仓库：[BeamMP-Server-Offline](https://github.com/dksslq/BeamMP-Server-Offline) ·
+>   [BeamMP-Launcher-Offline](https://github.com/dksslq/BeamMP-Launcher-Offline)
+>
+> 以下为上游原版 README 内容。
+
 # BeamMP
 A Lua mod bringing online multiplayer to [BeamNG.drive](https://beamng.com)!
 
