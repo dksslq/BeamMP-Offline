@@ -281,3 +281,14 @@ BeamMP-Offline 主仓库的 Release 里（或分别放在各自 Release）。
 
 所有代码遵循上游的 AGPL-3.0-or-later。离线化改动同样以 AGPL-3.0 发布。
 本项目与 BeamMP 官方无隶属关系；请勿用于商业用途（遵循上游许可约束）。
+
+## 11. 安全审计记录（2026-10-04，v1.0.3-offline-mod = 0ad583b2）
+
+- 全量网络端点扫描：无第三方/陌生域名；模组运行时仅连本机 launcher（127.0.0.1:4444/4445）。
+- 危险原语：无 loadstring/os.execute/io.popen/eval/混淆；`socket.http` 仅指向 localhost 代理
+  （avatar 拉取已是死代码，proxyPort=0 时无害失败）；zip 无预构建 UI bundle（发布物 UI = 可审计源码）。
+- 产物校验：v1.0.3 BeamMP.zip sha256 与 .sha256 一致；与 tag 源码逐文件哈希比对
+  447 文件中 446 逐字节一致，唯一多出 = CI 生成的 OFFLINE_BUILD.lua（良性元数据表）。
+- 结论：未发现后门/凭据窃取/遥测/供应链注入。玩家名仅存本地 player_name 并在连服时发给所连服务器（协议固有）。
+- 供应链提示：Actions 按官方 tag 引用（未按 SHA pin）；OFFLINE_BUILD.lua 由 CI 插值
+  GITHUB_REF_NAME/GITHUB_SHA 生成，仅 repo 写入者可利用，风险极低。
