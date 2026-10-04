@@ -17,8 +17,9 @@
     <div class="block">
       <h2>Your player name</h2>
       <p class="muted">
-        Pick a display name other players will see. You can change it later from the
-        Player screen (top bar) or the Player Identity page. Leave empty to join servers as a Guest.
+        Pick the display name other players will see on servers. A name is required to play —
+        if someone else on a server already uses it, yours is automatically suffixed (2), (3), …
+        You can change it later from the Player screen (top bar) or the Player Identity page.
       </p>
       <div class="input-shell">
         <input
@@ -34,6 +35,7 @@
           @keyup.enter="proceed"
         />
       </div>
+      <p v-if="nameMissing" class="name-hint">Please enter a player name to continue.</p>
     </div>
 
     <div class="block">
@@ -41,8 +43,7 @@
     </div>
 
     <div class="actions">
-      <BngButton :disabled="!canContinue" @click="proceed">{{ startLabel }}</BngButton>
-      <BngButton accent="secondary" :disabled="!tosAccepted" @click="proceedAsGuest">Play as Guest</BngButton>
+      <BngButton :disabled="!canContinue" @click="proceed">Start Playing</BngButton>
     </div>
   </section>
 </template>
@@ -52,6 +53,10 @@
 // Upstream this screen forced acceptance of the BeamMP online Terms of Service
 // and Rules (links to forum.beammp.com / docs.beammp.com). The offline edition
 // replaces it with a local welcome screen that also collects the player name.
+// Since v1.0.3 the name is MANDATORY: an unnamed connection sent a zero-length
+// name packet, which offline servers <= v1.0.1 rejected with
+// "Connection closed during authentication". The "Play as Guest" escape hatch
+// was removed accordingly.
 import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { BngButton } from "@/common/components/base"
@@ -60,25 +65,22 @@ import { BEAMMP_SERVERS_ROUTE_NAME } from "../shared/constants.js"
 import { useBeamMPState } from "../shared/beammpState.js"
 
 const router = useRouter()
-const { acceptTos, login, guestLogin, state } = useBeamMPState()
+const { acceptTos, login, state } = useBeamMPState()
 const tosAccepted = ref(false)
+const nameMissing = ref(false)
 const playerName = ref(state.auth.value?.username || "")
-const canContinue = computed(() => tosAccepted.value)
-const startLabel = computed(() => (playerName.value.trim() ? "Start Playing" : "Continue"))
+const canContinue = computed(() => tosAccepted.value && Boolean(playerName.value.trim()))
 
 async function proceed() {
-  if (!canContinue.value) return
-  acceptTos()
-  if (playerName.value.trim()) {
-    await login(playerName.value.trim(), "")
-  }
-  router.push({ name: BEAMMP_SERVERS_ROUTE_NAME })
-}
-
-async function proceedAsGuest() {
   if (!tosAccepted.value) return
+  if (!playerName.value.trim()) {
+    nameMissing.value = true
+    return
+  }
+  nameMissing.value = false
+  const started = await login(playerName.value.trim(), "")
+  if (!started) return
   acceptTos()
-  await guestLogin()
   router.push({ name: BEAMMP_SERVERS_ROUTE_NAME })
 }
 
@@ -86,6 +88,11 @@ async function proceedAsGuest() {
 // keep in sync if auth changes while typing (e.g. saved name restored late)
 watch(() => state.auth.value?.username, value => {
   if (value && !playerName.value) playerName.value = value
+})
+
+// clear the hint as soon as the user starts typing a name
+watch(playerName, value => {
+  if (value.trim()) nameMissing.value = false
 })
 </script>
 
@@ -110,6 +117,12 @@ watch(() => state.auth.value?.username, value => {
 
 .muted {
   color: var(--bng-cool-gray-100);
+}
+
+.name-hint {
+  margin: 0.4rem 0 0;
+  color: var(--bng-add-red-500);
+  font-size: 0.85rem;
 }
 
 .actions {

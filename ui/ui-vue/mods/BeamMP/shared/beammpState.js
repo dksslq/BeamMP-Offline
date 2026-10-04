@@ -72,7 +72,12 @@ const officialMaps = [
 
 const state = {
   isReady: ref(false),
-  tosAccepted: ref(localStorage.getItem("tosAccepted") === "true"),
+  // === OFFLINE MODE (BeamMP-Offline) ===
+  // "beammpOfflineOnboarded" replaces upstream's "tosAccepted" key. The key
+  // bump intentionally re-runs the welcome screen once for everyone so the
+  // (now mandatory) player-name prompt is shown to users of older offline
+  // releases that never picked a name (see CONTEXT.md).
+  tosAccepted: ref(localStorage.getItem("beammpOfflineOnboarded") === "true"),
   launcherConnected: ref(false),
   loggedIn: ref(false),
   loginError: ref(""),
@@ -479,19 +484,22 @@ async function login(username, password) {
   // === OFFLINE MODE (BeamMP-Offline) ===
   // No account/password required. The name is stored locally by the
   // launcher and used as the player's in-game name on offline servers.
+  // A name is mandatory: joining without one used to send a zero-length
+  // name packet, which offline servers <= v1.0.1 reject with
+  // "Connection closed during authentication".
   state.loginError.value = ""
-  if (!username) {
-    state.loginError.value = "Please enter a player name (or play as guest)"
-    return
+  if (!username || !String(username).trim()) {
+    state.loginError.value = "Please enter a player name to continue"
+    return false
   }
-  const credentials = { username: username.trim(), password: "" }
+  const credentials = { username: String(username).trim(), password: "" }
   extensionCommand("MPCoreNetwork", "login", bridgeApi.serializeToLua(credentials))
+  return true
 }
 
-async function guestLogin() {
-  state.loginError.value = ""
-  extensionCommand("MPCoreNetwork", "login")
-}
+// OFFLINE MODE (BeamMP-Offline): guestLogin() was removed - a player name is
+// now mandatory on the welcome/identity screens, and an unnamed connection
+// would be rejected by older offline servers.
 
 // OFFLINE MODE: upstream logout() (account sign-out via the launcher) was
 // removed - there are no accounts, the player name is edited on the identity
@@ -553,7 +561,8 @@ async function getLauncherVersion() {
 }
 
 function acceptTos() {
-  localStorage.setItem("tosAccepted", "true")
+  localStorage.setItem("beammpOfflineOnboarded", "true")
+  localStorage.removeItem("tosAccepted") // legacy pre-v1.0.3 key
   state.tosAccepted.value = true
   extensionCommand("MPConfig", "acceptTos")
 }
@@ -771,7 +780,6 @@ export function useBeamMPState(events) {
     extensionCommand,
     formatBytes,
     getLauncherVersion,
-    guestLogin,
     isFavorite,
     isRecent,
     loadFavorites,

@@ -29,8 +29,7 @@
       </div>
 
       <div class="actions">
-        <BngButton @click="submitLogin">Save Name</BngButton>
-        <BngButton accent="secondary" @click="submitGuest">Play as Guest</BngButton>
+        <BngButton :disabled="!canSave" @click="submitLogin">Save Name</BngButton>
         <BngButton accent="secondary" @click="goBack">Back</BngButton>
       </div>
 
@@ -47,7 +46,8 @@
 // (username + password sent to auth.beammp.com via the launcher) and offered a
 // registration link. The offline edition has no accounts: the player just picks
 // a local display name which the launcher stores and offline servers accept.
-import { ref } from "vue"
+// Since v1.0.3 the name is mandatory and the "Play as Guest" option is gone.
+import { computed, ref } from "vue"
 import { useRouter } from "vue-router"
 import { BngButton } from "@/common/components/base"
 import { vBngTextInput } from "@/common/directives"
@@ -60,7 +60,8 @@ const hasTriedToLogin = ref(false)
 const LEGACY_LOGO_PATH = "ui/assets/BeamMP/beammp_new_cropped.png"
 const LOGO_FALLBACK = "/ui/assets/BeamMP/icons/account-multiple.svg"
 const logoSrc = ref(LEGACY_LOGO_PATH)
-const { login, guestLogin, state } = useBeamMPState()
+const { login, state } = useBeamMPState()
+const canSave = computed(() => Boolean(username.value.trim()))
 
 function onLogoError() {
   if (logoSrc.value !== LOGO_FALLBACK) {
@@ -69,13 +70,10 @@ function onLogoError() {
 }
 
 async function submitLogin() {
-  await login(username.value, "")
+  const saved = await login(username.value, "")
   hasTriedToLogin.value = true
-}
-
-async function submitGuest() {
-  hasTriedToLogin.value = true
-  await guestLogin()
+  if (!saved) return
+  username.value = ""
 }
 
 function goBack() {
@@ -86,7 +84,7 @@ function toServers() {
   router.replace({ name: BEAMMP_SERVERS_ROUTE_NAME })
 }
 
-// once a name is saved (or guest chosen) jump to the server list
+// once a name is saved (the launcher confirms via the auth events) jump to the server list
 import { watch } from "vue"
 watch(() => state.loggedIn.value, value => {
   if (value) toServers()

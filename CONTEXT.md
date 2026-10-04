@@ -50,7 +50,11 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 - **旧语义**：客户端发送"公钥"，服务端转发给 backend 验证换取用户名。
 - **新语义**：客户端直接发送**玩家昵称**（UTF-8，≤32 字节，由玩家在游戏内自选，
   存在 Launcher 目录 `player_name` 文件）；服务端直接把它作为玩家名。
-  空名字 → 服务端视为 `Guest`（受 `AllowGuests` 配置约束，默认允许）。
+- **未命名玩家（v1.0.2/v1.0.3 起，注意配套）**：mod v1.0.3 起首次使用强制输入名字，
+  UI 已无"匿名"路径；Launcher v1.0.2 起若本地无名字则发送字面量 `Guest`（永不发 0 字节包）；
+  服务端 v1.0.2 起把"合法的 0 长度名字包"（只可能来自旧版 Launcher）按 Guest 处理，
+  不再误判为断线。三者任一升级即可修复 "Connection closed during authentication" 踢人问题。
+  服务端 `AllowGuests=false` 现在只能拦截仍发送空包的旧客户端。
 
 **所有互联网请求已移除**：
 - Launcher：不再访问 auth/backend/forum 任何域名；更新检查、mod 下载、HTTP 代理
@@ -86,16 +90,17 @@ Launcher ──> backend /builds/client ──下载客户端 mod（BeamMP.zip�
 #### BeamMP-Offline（meta / 客户端 mod）
 | 文件 | 改动 |
 |---|---|
-| `lua/ge/extensions/MPCoreNetwork.lua` `loginReceived()` | 跳过论坛头像的本地代理 HTTP 请求（`if false then ... end` 包裹，保留代码便于上游合并）。 |
-| `ui/ui-vue/mods/BeamMP/views/BeamMPTOSView.vue` | **重写**：原 TOS 页（强制接受官方条款+外链）→ 离线欢迎页：说明离线特性 + 昵称输入框 + "Start Playing / Play as Guest" 按钮。仍写入 tosAccepted（保持路由守卫逻辑不变）。 |
-| `ui/ui-vue/mods/BeamMP/views/BeamMPLoginView.vue` | **重写**：原账号登录页 → 玩家昵称设置页（Save Name / Play as Guest / Back）。 |
-| `ui/ui-vue/mods/BeamMP/shared/beammpState.js` `login()` | 密码不再必需；只发 `{username}`。 |
+| `lua/ge/extensions/MPCoreNetwork.lua` `loginReceived()` | 跳过论坛头像的本地代理 HTTP 请求（`if false then ... end` 包裹，保留代码便于上游合并）。**v1.0.3 起**：保存名字的响应（只含 success/message、无 username/Auth）后自动补发一次 `Nc`，拉取完整 auth 状态（含新名字）推给 UI，顶栏徽章立即更新（Nc 响应含 username，不会循环） |
+| `ui/ui-vue/mods/BeamMP/views/BeamMPTOSView.vue` | **重写**：原 TOS 页（强制接受官方条款+外链）→ 离线欢迎页：说明离线特性 + 昵称输入框。**v1.0.3 起**：玩家名字**必填**（无名字时 Start Playing 禁用+内联提示），**移除 Play as Guest**；说明同名玩家自动加后缀 (2)(3)；仍写入 onboarded 标记（保持路由守卫逻辑不变）。 |
+| `ui/ui-vue/mods/BeamMP/views/BeamMPLoginView.vue` | **重写**：原账号登录页 → 玩家昵称设置页。**v1.0.3 起**：Save Name 空输入禁用，移除 Play as Guest。 |
+| `ui/ui-vue/mods/BeamMP/shared/beammpState.js` `login()` | 密码不再必需；只发 `{username}`。**v1.0.3 起**：空/纯空白名字直接拒绝（返回 false）；**删除 guestLogin()** 及其导出；引导标记 localStorage key 由 `tosAccepted` 升级为 `beammpOfflineOnboarded`（key 升级 = 所有老用户重新看到一次强制输入名字的欢迎页，acceptTos 顺便清理旧 key）。 |
 | `ui/ui-vue/mods/BeamMP/layouts/BeamMPMain.vue` | 侧栏移除 Forum/Discord/Patreon/Docs 按钮；隐藏 Official/Featured/Partner 分类过滤；GitHub 按钮指向官方仓库。 |
 | `.github/workflows/package.yml` | **新增**：把 `lua/ ui/ locales/ settings/ vehicles/ + LICENSE` 打包成 `BeamMP.zip`，push 到 main 产出 artifact，打 tag（`v*`）时附加到 Release。打包时**自动注入 `lua/ge/extensions/beammp/OFFLINE_BUILD.lua` 标记**（含 edition/version/commit/repository），用于识别离线版 mod（官方版 zip 没有此文件）。 |
 | `ui/ui-vue/mods/BeamMP/index.js` | 主菜单按钮标题 `BeamMP` → `BeamMP Offline`。 |
 | `ui/ui-vue/mods/BeamMP/layouts/BeamMPMain.vue` | 版本行加 `OFFLINE` 徽标（带 title 提示）。 |
 | **v1.0.2 UI 大清理**（用户要求：只留直连+列表+身份，其余 UI+逻辑全删） | 删除：Patreon 横幅+图标、账号面板（论坛头像/角色徽章/ID/登出）→ 换成轻量 Player 徽章（名字+Edit→身份页）；死组件 BeamMPHome/TilesView/ModsCard/DirectConnectCard/PauseMainCard/PauseDisconnectModal 及路由/常量；暂停玩家列表的"打开论坛主页"按钮（保留复制名字）；死路由守卫分支与 logout()。增强：服务器浏览器空状态引导（含主线服务器需官方账号的提示）；直连页记忆上次 IP/端口 + 输入校验（内联错误提示）+ 当前身份显示；GitHub 链接指向本仓库。净删约 1100 行。 |
 | `ui/ui-vue/mods/BeamMP/views/BeamMPTOSView.vue`（v1.0.2 补充） | 文案：昵称可随时在顶栏 Player 徽章或 Player Identity 页修改。 |
+| **v1.0.3 强制玩家名**（修复 "Connection closed during authentication" 踢人） | 根因：未命名玩家（UI 显示兜底文案 "Guest"）→ 旧 Launcher 发送 0 字节名字包 → 服务端 ≤v1.0.1 把合法空包误判为断线并踢出。三层修复：① 服务端 TCPRcv 区分合法空包/断线（v1.0.2-offline-server）；② Launcher 空名回退发 "Guest"（v1.0.2-offline-launcher）；③ mod 欢迎页强制输入名字 + 删除 Play as Guest + onboarded key 升级触发全量重引导（v1.0.3-offline-mod） |
 
 ### 3.4 客户端 mod 分发方式（重要！）
 

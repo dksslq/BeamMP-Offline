@@ -426,6 +426,15 @@ local function loginReceived(params)
                 log('M', 'loginReceived', 'Login successful.')
                 loggedIn = true
                 guihooks.trigger('onBeamMPLoggedIn', result.message or '')
+                -- === OFFLINE MODE (BeamMP-Offline) ===
+                -- The response to a name save ("N:<name>") only carries
+                -- success/message, not the new username. Ask the launcher for
+                -- the full auth state once so the UI immediately sees the
+                -- saved name (the Nc response contains username, so this
+                -- cannot loop).
+                if not result.username and not result.Auth then
+                        send('Nc')
+                end
         else
                 log('M', 'loginReceived', 'Login failed.')
                 loggedIn = false
